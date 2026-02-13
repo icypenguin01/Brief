@@ -39,12 +39,19 @@ ___
 * Instead, **it analyzes your behavior** 
 **every command,every repetition,every shortcut**  and evaluates how disciplined, efficient, and reproducible your workflow is.
 
-After each session, `Brief` acts like a **strict but helpful mentor**:
+## After Each Session
 
-1. **It points out every mistake that you made.**
-2. **It explains why it was wrong or it will tell you a better way to do it, if there is one .**
-3. **It shows the correct methodology.It explains where you went wrong.**
-4. **It will tell inefficient commands you used.**
+**Brief** acts like a strict but helpful mentor by:
+
+1. Pointing out every mistake you made
+2. Explaining why it was wrong and showing you a better approach
+3. Demonstrating the correct methodology and where you went wrong
+4. Identifying inefficient commands you used
+
+It then generates a detailed report in both `.md` and `.html` formats. 
+
+[View a sample report →](https://icypenguin01.github.io/Brief/sample-report.html)
+___
    
 *In CTFs and pentest labs, most learners focus on one thing:*
 
