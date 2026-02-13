@@ -104,7 +104,7 @@ And It generates a detailed report in `.md (Markdown)` and `.html` formats.
 git clone https://github.com/icypenguin01/Brief.git
 ```
 ```bash
-cd brief
+cd Brief
 ```
 ```bash
 chmod +x requirements.sh
@@ -134,7 +134,7 @@ now rerun `./requirements.sh`
 ### 3. Set Your Token
 
 ```bash
-export HF_TOKEN=hf_xxxxxxxxxxxxxxxxx
+export HF_TOKEN= Your Hugging Face Token
 ```
 
 ##  Basic Commands
