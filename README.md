@@ -179,7 +179,9 @@ brief --use <session name>
 brief --ingest ~/.brief/sessions/htb-example-box.md
 ```
 
-Sends the session to the AI model and generates reports.
+It then generates a detailed report in both `.md` and `.html` formats. 
+
+[View a sample report →](https://icypenguin01.github.io/Brief/sample-report.html)
 
 ### ingest the most recent session:
 
