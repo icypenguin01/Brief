@@ -101,7 +101,7 @@ And It generates a detailed report in `.md (Markdown)` and `.html` formats.
 ### 1. Install
 
 ```bash
-git clone https://github.com/doany1/brief.git
+git clone https://github.com/icypenguin01/Brief.git
 ```
 ```bash
 cd brief
