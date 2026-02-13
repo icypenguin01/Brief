@@ -250,6 +250,8 @@ The tool:
 
 ### 4. Read the report
 
+[View a sample report →](https://icypenguin01.github.io/Brief/sample-report.html)
+
 ```bash
 # Plain text
 cat ~/.brief/outputs/htb-mysql-injection.analysis.md
