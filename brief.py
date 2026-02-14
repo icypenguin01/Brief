@@ -7,6 +7,7 @@ import time
 import threading
 import textwrap
 import shutil
+import re
 from pathlib import Path
 from datetime import datetime, timezone
 from openai import OpenAI
@@ -422,6 +423,15 @@ def ensure_dirs():
     SESS_DIR.mkdir(parents=True, exist_ok=True)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
+def _recording_active_in_shell():
+    log_path = os.environ.get("BRIEF_LOG", "").strip()
+    if not log_path:
+        return None
+    log_file = Path(log_path)
+    if log_file.exists() and not STOP_FILE.exists():
+        return log_file
+    return None
+
 def set_current_session(log_file):
     CURRENT_SESSION_FILE.write_text(str(log_file))
 
@@ -433,15 +443,12 @@ BRIEF_LOG_PATH="$(cat "{CURRENT_SESSION_FILE}")"
 if [ -z "$BRIEF_LOG_PATH" ] || [ ! -f "$BRIEF_LOG_PATH" ]; then return; fi
 if [ -f "{STOP_FILE}" ]; then return; fi
 
-BRIEF_TERM_LABEL="$(awk '/^# terminal /{{print $3}}' "$BRIEF_LOG_PATH" | tail -n 1)"
-if [ -z "$BRIEF_TERM_LABEL" ]; then
+BRIEF_LAST_LABEL="$(grep -Eo '\\[from terminal [0-9]+\\]' "$BRIEF_LOG_PATH" | grep -Eo '[0-9]+' | sort -n | tail -n 1)"
+if [ -z "$BRIEF_LAST_LABEL" ]; then
   BRIEF_TERM_LABEL=1
 else
-  BRIEF_TERM_LABEL=$((BRIEF_TERM_LABEL + 1))
+  BRIEF_TERM_LABEL=$((BRIEF_LAST_LABEL + 1))
 fi
-
-TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-echo "# terminal $BRIEF_TERM_LABEL started $TS" >> "$BRIEF_LOG_PATH"
 
 export BRIEF_LOG="$BRIEF_LOG_PATH"
 export BRIEF_TERM_LABEL="$BRIEF_TERM_LABEL"
@@ -455,10 +462,18 @@ __brief_log() {{
   RET=$?;
   CMD=$(history 1 | sed "s/^ *[0-9]\\+ *//");
   [ -z "$CMD" ] && return;
-  if [ -f "{STOP_FILE}" ]; then return; fi
+  if [ -f "{STOP_FILE}" ]; then
+    if [[ "$PROMPT_COMMAND" == *__brief_log* ]]; then
+      PROMPT_COMMAND="${{PROMPT_COMMAND/__brief_log; /}}"
+      PROMPT_COMMAND="${{PROMPT_COMMAND/__brief_log/}}"
+    fi
+    unset BRIEF_LOG BRIEF_TERM_LABEL BRIEF_AUTO_ATTACHED BRIEF_LAST_CMD
+    unset -f __brief_log
+    return
+  fi
   if [ -z "$BRIEF_LOG" ] || [ ! -f "$BRIEF_LOG" ]; then return; fi
   case "$CMD" in
-    PROMPT_COMMAND=__brief_log*|*__brief_log*|history\\ -c* ) return ;;
+    PROMPT_COMMAND=__brief_log*|*__brief_log*|history\\ -c*|brief|brief\\ *|*/brief|*/brief\\ * ) return ;;
   esac
   if [ "$CMD" = "$BRIEF_LAST_CMD" ]; then return; fi;
   BRIEF_LAST_CMD="$CMD";
@@ -565,6 +580,11 @@ def start_session():
     ensure_dirs()
     write_autoattach_hook()
     STOP_FILE.unlink(missing_ok=True)
+    active_log = _recording_active_in_shell()
+    if active_log:
+        print(f"[-] Recording is already active in this shell: {active_log}")
+        print("[!] Stop it first with: brief --stop")
+        sys.exit(1)
 
     name = input("Session name: ").strip()
     if not name:
@@ -580,7 +600,7 @@ def start_session():
     set_current_session(log_file)
     with open(log_file, "w") as f:
         f.write(f"# ctf command log created {utc_now()}\n")
-        f.write(f"# terminal 1 started {utc_now()}\n\n")
+        f.write("\n")
 
     rcfile = BASE_DIR / ".brief_bashrc"
     rcfile.write_text(
@@ -592,10 +612,10 @@ def start_session():
         "  RET=$?;\n"
         "  CMD=$(history 1 | sed \"s/^ *[0-9]\\+ *//\");\n"
         "  [ -z \"$CMD\" ] && return;\n"
-        f"  if [ -f \"{STOP_FILE}\" ]; then return; fi;\n"
+        f"  if [ -f \"{STOP_FILE}\" ]; then if [[ \"$PROMPT_COMMAND\" == *__brief_log* ]]; then PROMPT_COMMAND=\"${{PROMPT_COMMAND/__brief_log; /}}\"; PROMPT_COMMAND=\"${{PROMPT_COMMAND/__brief_log/}}\"; fi; unset BRIEF_LOG BRIEF_TERM_LABEL BRIEF_AUTO_ATTACHED BRIEF_LAST_CMD; unset -f __brief_log; return; fi;\n"
         "  if [ -z \"$BRIEF_LOG\" ] || [ ! -f \"$BRIEF_LOG\" ]; then return; fi;\n"
         "  case \"$CMD\" in\n"
-        "    PROMPT_COMMAND=__brief_log*|*__brief_log*|history\\ -c* ) return ;;\n"
+        "    PROMPT_COMMAND=__brief_log*|*__brief_log*|history\\ -c*|brief|brief\\ *|*/brief|*/brief\\ * ) return ;;\n"
         "  esac\n"
         "  if [ \"$CMD\" = \"$BRIEF_LAST_CMD\" ]; then return; fi;\n"
         "  BRIEF_LAST_CMD=\"$CMD\";\n"
@@ -616,14 +636,8 @@ def start_session():
     print("[+] Recording session (type `brief --stop` to stop; enter from any terminal or tab)\n")
     subprocess.run(["bash", "--rcfile", str(rcfile)], env=env)
 
-    with open(log_file, "a") as f:
-        f.write(f"# terminal 1 ended {utc_now()}\n")
-
     rcfile.unlink(missing_ok=True)
-    if STOP_FILE.exists():
-        print(f"[+] Recording already stopped for this {log_file.stem}")
-        print(f"[+] Session file: {log_file}")
-    else:
+    if not STOP_FILE.exists():
         print(f"[*] Terminal closed. Recording still active for {log_file.stem}.")
 
 # =========================
@@ -631,21 +645,26 @@ def start_session():
 # =========================
 
 def _next_terminal_index(log_file):
-    term_index = 1
+    term_index = 0
     try:
         for line in log_file.read_text(errors="ignore").splitlines():
-            if line.startswith("# terminal "):
-                parts = line.split()
-                if len(parts) >= 3 and parts[2].isdigit():
-                    term_index = max(term_index, int(parts[2]))
+            match = re.search(r"\[from terminal (\d+)\]", line)
+            if match:
+                term_index = max(term_index, int(match.group(1)))
     except FileNotFoundError:
         return 1
-    return term_index + 1
+    return max(1, term_index + 1)
 
 def use_session(path):
     ensure_dirs()
     write_autoattach_hook()
     STOP_FILE.unlink(missing_ok=True)
+    active_log = _recording_active_in_shell()
+    if active_log:
+        print(f"[-] Recording is already active in this shell: {active_log}")
+        print("[!] Stop it first with: brief --stop")
+        sys.exit(1)
+
     log_file = Path(path)
 
     if not log_file.exists():
@@ -654,8 +673,6 @@ def use_session(path):
 
     set_current_session(log_file)
     term_index = _next_terminal_index(log_file)
-    with open(log_file, "a") as f:
-        f.write(f"# terminal {term_index} started {utc_now()}\n")
 
     rcfile = BASE_DIR / ".brief_bashrc"
     rcfile.write_text(
@@ -667,10 +684,10 @@ def use_session(path):
         "  RET=$?;\n"
         "  CMD=$(history 1 | sed \"s/^ *[0-9]\\+ *//\");\n"
         "  [ -z \"$CMD\" ] && return;\n"
-        f"  if [ -f \"{STOP_FILE}\" ]; then return; fi;\n"
+        f"  if [ -f \"{STOP_FILE}\" ]; then if [[ \"$PROMPT_COMMAND\" == *__brief_log* ]]; then PROMPT_COMMAND=\"${{PROMPT_COMMAND/__brief_log; /}}\"; PROMPT_COMMAND=\"${{PROMPT_COMMAND/__brief_log/}}\"; fi; unset BRIEF_LOG BRIEF_TERM_LABEL BRIEF_AUTO_ATTACHED BRIEF_LAST_CMD; unset -f __brief_log; return; fi;\n"
         "  if [ -z \"$BRIEF_LOG\" ] || [ ! -f \"$BRIEF_LOG\" ]; then return; fi;\n"
         "  case \"$CMD\" in\n"
-        "    PROMPT_COMMAND=__brief_log*|*__brief_log*|history\\ -c* ) return ;;\n"
+        "    PROMPT_COMMAND=__brief_log*|*__brief_log*|history\\ -c*|brief|brief\\ *|*/brief|*/brief\\ * ) return ;;\n"
         "  esac\n"
         "  if [ \"$CMD\" = \"$BRIEF_LAST_CMD\" ]; then return; fi;\n"
         "  BRIEF_LAST_CMD=\"$CMD\";\n"
@@ -691,14 +708,8 @@ def use_session(path):
     print(f"[+] Using existing session (terminal {term_index}) (type `brief --stop` to stop; enter from any terminal or tab)\n")
     subprocess.run(["bash", "--rcfile", str(rcfile)], env=env)
 
-    with open(log_file, "a") as f:
-        f.write(f"# terminal {term_index} ended {utc_now()}\n")
-
     rcfile.unlink(missing_ok=True)
-    if STOP_FILE.exists():
-        print(f"[+] Recording already stopped for this {log_file.stem}")
-        print(f"[+] Session file: {log_file}")
-    else:
+    if not STOP_FILE.exists():
         print(f"[*] Terminal closed. Recording still active for {log_file.stem}.")
 
 # =========================
@@ -722,11 +733,6 @@ def stop_session():
 
     log_path = CURRENT_SESSION_FILE.read_text(errors="ignore").strip()
     log_file = Path(log_path) if log_path else None
-
-    term_label = os.environ.get("BRIEF_TERM_LABEL")
-    if log_file and log_file.exists() and term_label:
-        with open(log_file, "a") as f:
-            f.write(f"# terminal {term_label} ended {utc_now()}\n")
 
     CURRENT_SESSION_FILE.unlink(missing_ok=True)
 
