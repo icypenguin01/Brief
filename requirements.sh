@@ -43,13 +43,11 @@ if [ -f "brief.py" ]; then
       printf "#!%s\n" "${VENV_DIR}/bin/python"
       awk 'NR == 1 && /^#!/ { next } { print }' brief.py
     } > "${TMP_BRIEF}"
-    run_step "Installing brief to /usr/local/bin/brief" sudo cp "${TMP_BRIEF}" /usr/local/bin/brief
-    run_step "Making /usr/local/bin/brief executable" sudo chmod +x /usr/local/bin/brief
+    run_step "Installing brief to /usr/local/bin/brief (mode 0755)" sudo install -m 0755 "${TMP_BRIEF}" /usr/local/bin/brief
     rm -f "${TMP_BRIEF}"
     echo "[+] Installed brief to /usr/local/bin/brief (uses venv Python)"
   else
-    run_step "Installing brief to /usr/local/bin/brief" sudo cp brief.py /usr/local/bin/brief
-    run_step "Making /usr/local/bin/brief executable" sudo chmod +x /usr/local/bin/brief
+    run_step "Installing brief to /usr/local/bin/brief (mode 0755)" sudo install -m 0755 brief.py /usr/local/bin/brief
     echo "[+] Installed brief to /usr/local/bin/brief"
   fi
 else
