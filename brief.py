@@ -447,7 +447,7 @@ export BRIEF_LOG="$BRIEF_LOG_PATH"
 export BRIEF_TERM_LABEL="$BRIEF_TERM_LABEL"
 export BRIEF_AUTO_ATTACHED=1
 
-set -o history
+set +o history
 shopt -s histappend
 HISTCONTROL=
 
@@ -456,6 +456,7 @@ __brief_log() {{
   CMD=$(history 1 | sed "s/^ *[0-9]\\+ *//");
   [ -z "$CMD" ] && return;
   if [ -f "{STOP_FILE}" ]; then return; fi
+  if [ -z "$BRIEF_LOG" ] || [ ! -f "$BRIEF_LOG" ]; then return; fi
   case "$CMD" in
     PROMPT_COMMAND=__brief_log*|*__brief_log*|history\\ -c* ) return ;;
   esac
@@ -474,6 +475,7 @@ if [[ "$PROMPT_COMMAND" != *"__brief_log"* ]]; then
     PROMPT_COMMAND="__brief_log"
   fi
 fi
+set -o history
 """
     AUTO_ATTACH_HOOK.write_text(hook)
 
@@ -570,6 +572,11 @@ def start_session():
         sys.exit(1)
 
     log_file = SESS_DIR / f"{name}.md"
+    if log_file.exists():
+        print("[-] file name alredy exist")
+        print(f"[!] if you want to save history in same file then do this 'brief --use {log_file}'")
+        sys.exit(1)
+
     set_current_session(log_file)
     with open(log_file, "w") as f:
         f.write(f"# ctf command log created {utc_now()}\n")
@@ -578,15 +585,15 @@ def start_session():
     rcfile = BASE_DIR / ".brief_bashrc"
     rcfile.write_text(
         "if [ -f ~/.bashrc ]; then source ~/.bashrc; fi\n"
-        "set -o history\n"
+        "set +o history\n"
         "shopt -s histappend\n"
         "HISTCONTROL=\n"
-        "history -c\n"
         "__brief_log() {\n"
         "  RET=$?;\n"
         "  CMD=$(history 1 | sed \"s/^ *[0-9]\\+ *//\");\n"
         "  [ -z \"$CMD\" ] && return;\n"
         f"  if [ -f \"{STOP_FILE}\" ]; then return; fi;\n"
+        "  if [ -z \"$BRIEF_LOG\" ] || [ ! -f \"$BRIEF_LOG\" ]; then return; fi;\n"
         "  case \"$CMD\" in\n"
         "    PROMPT_COMMAND=__brief_log*|*__brief_log*|history\\ -c* ) return ;;\n"
         "  esac\n"
@@ -598,6 +605,8 @@ def start_session():
         "  echo -e \"$TS\\t$RET\\t$CWD\\t[from terminal $TERM_LABEL] $CMD\" >> \"$BRIEF_LOG\";\n"
         "}\n"
         "PROMPT_COMMAND=__brief_log\n"
+        "set -o history\n"
+        "history -c\n"
     )
 
     env = os.environ.copy()
@@ -651,15 +660,15 @@ def use_session(path):
     rcfile = BASE_DIR / ".brief_bashrc"
     rcfile.write_text(
         "if [ -f ~/.bashrc ]; then source ~/.bashrc; fi\n"
-        "set -o history\n"
+        "set +o history\n"
         "shopt -s histappend\n"
         "HISTCONTROL=\n"
-        "history -c\n"
         "__brief_log() {\n"
         "  RET=$?;\n"
         "  CMD=$(history 1 | sed \"s/^ *[0-9]\\+ *//\");\n"
         "  [ -z \"$CMD\" ] && return;\n"
         f"  if [ -f \"{STOP_FILE}\" ]; then return; fi;\n"
+        "  if [ -z \"$BRIEF_LOG\" ] || [ ! -f \"$BRIEF_LOG\" ]; then return; fi;\n"
         "  case \"$CMD\" in\n"
         "    PROMPT_COMMAND=__brief_log*|*__brief_log*|history\\ -c* ) return ;;\n"
         "  esac\n"
@@ -671,6 +680,8 @@ def use_session(path):
         "  echo -e \"$TS\\t$RET\\t$CWD\\t[from terminal $TERM_LABEL] $CMD\" >> \"$BRIEF_LOG\";\n"
         "}\n"
         "PROMPT_COMMAND=__brief_log\n"
+        "set -o history\n"
+        "history -c\n"
     )
 
     env = os.environ.copy()
@@ -730,12 +741,12 @@ def stop_session():
 
 def list_sessions():
     ensure_dirs()
-    files = sorted(SESS_DIR.glob("*.md"))
+    files = sorted(SESS_DIR.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True)
     if not files:
         print("[*] No sessions found")
         return
-    latest = max(files, key=lambda p: p.stat().st_mtime)
-    print(str(latest))
+    for session_file in files:
+        print(str(session_file))
 
 # =========================
 # TAIL
@@ -848,95 +859,38 @@ def ingest_latest_session():
 # CLI
 # =========================
 
-def help_lines():
-    return [
-        "brief — record and analyze CTF / lab command history",
-        "",
-        "Usage:",
-        "  brief [-h] [--version]",
-        "        (--start | --use SESSION_FILE | --list | --tail [N] |",
-        "         --ingest SESSION_FILE | --latest | --stop)",
-        "",
-        "Description:",
-        "  Records terminal commands during CTFs or labs and generates",
-        "  a detailed post-mortem analysis. Only one action may be used",
-        "  per run.",
-        "",
-        "Workflow:",
-        "  start → record commands → ingest / latest → report",
-        "",
-        "Options:",
-        "  -h, --help",
-        "      Show this help message and exit",
-        "",
-        "  --version",
-        "      Show program version and exit",
-        "",
-        "  --start",
-        "      Start a new command recording session",
-        "",
-        "  -u SESSION_FILE, --use SESSION_FILE",
-        "      brief --use <full path of saved session>",
-        "      it use that same file to store history.(e.g You are solving a machine or",
-        "      doing work that takes two days. On day one, you don’t save the history.",
-        "      On day two, you continue saving the history in the same file without",
-        "      creating a new file.)",
-        "",
-        "  -l, --list",
-        "      Print the full path of the most recent session file",
-        "",
-        "  --tail [N]",
-        "      Show the last N lines of the most recent session",
-        "      (default: 20)",
-        "",
-        "  -i SESSION_FILE, --ingest SESSION_FILE",
-        "      Analyze a specific session file",
-        "",
-        "  --latest",
-        "      Analyze the most recent session (requires an existing session)",
-        "",
-        "  --stop",
-        "      Stop recording the current session in this shell",
-        "",
-        "Session Files:",
-        "  - Markdown (.md)",
-        "  - Append-only",
-        "  - Safe to edit manually",
-        "  - One command per line with timestamps",
-        "",
-        "Environment:",
-        "  HF_TOKEN",
-        "      Hugging Face API token (required for analysis)",
-        "",
-        "Examples:",
-        "  brief --start",
-        "      Start a new recording session",
-        "",
-        "  brief --list",
-        "      Show the most recent session path",
-        "",
-        "  brief --tail 50",
-        "      Show the last 50 commands",
-        "",
-        "  brief --use <full path of saved session>",
-        "      it use that same file to store history.(e.g You are solving a machine or",
-        "      doing work that takes two days. On day one, you don’t save the history.",
-        "      On day two, you continue saving the history in the same file without",
-        "      creating a new file.)",
-        "",
-        "  brief --latest",
-        "      Analyze the most recent session",
-        "",
-        "  brief --ingest ladder.md",
-        "      Analyze a specific session file",
-        "",
-        "  brief --stop",
-        "      Stop recording in this shell",
-    ]
+def help_text():
+    return """brief - Sharpen your pentest methodology.
+
+Syntax: brief [--version] (--start | --use SESSION_FILE | --list | --tail [N] | --ingest SESSION_FILE | --latest | --stop)
+
+Options:
+  -h, --help                      show this help message and exit
+  --version                       show program version and exit
+  --start                         start a new command recording session
+  -u, --use SESSION_FILE          append a new terminal history to an existing session file
+  -l, --list                      print full paths of all saved session files
+  --tail [N]                      print last N lines of the most recent session (default: 20)
+  -i, --ingest SESSION_FILE       analyze a specific session file
+  --latest                        analyze the most recent session
+  --stop                          stop recording the current session
+
+Environment:
+  HF_TOKEN                        Hugging Face API token (required for analysis)
+
+Examples:
+  brief --start
+  brief --list
+  brief --tail 50
+  brief --use /home/parrot/.brief/sessions/cap.md
+  brief --latest
+  brief --ingest /home/parrot/.brief/sessions/cap.md
+  brief --stop
+"""
 
 class BriefArgumentParser(argparse.ArgumentParser):
     def format_help(self):
-        return box_string(help_lines(), width=HELP_BOX_WIDTH)
+        return help_text()
 
     def error(self, message):
         if "unrecognized arguments" in message:
@@ -954,7 +908,7 @@ def main():
         epilog=(
             "Examples (what each command does):\n"
             "  brief --start                    -> start a new recording session\n"
-            "  brief --list                     -> print the most recent session file path\n"
+            "  brief --list                     -> print all saved session file paths\n"
             "  brief --tail 50                  -> print the last 50 lines of the recent session\n"
             "  brief --use (brief --list)       -> attach a new terminal to the latest session\n"
             "  brief --use ladder.md            -> attach a new terminal to ladder.md\n"
@@ -971,7 +925,7 @@ def main():
 
     group.add_argument("--start", action="store_true", help="start a new command recording session")
     group.add_argument("-u", "--use", metavar="SESSION_FILE", help="append a new terminal's history to an existing session file")
-    group.add_argument("-l", "--list", action="store_true", help="print the most recent session file (full path)")
+    group.add_argument("-l", "--list", action="store_true", help="print full paths of all saved session files")
     group.add_argument("--tail", nargs="?", const=20, type=int, metavar="N", help="print the last N lines of the most recent session (default: 20)")
     group.add_argument("-i", "--ingest", metavar="SESSION_FILE", help="analyze a specific session file")
     group.add_argument("--latest", action="store_true", help="analyze the most recent session")
