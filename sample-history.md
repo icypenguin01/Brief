@@ -1,3 +1,4 @@
+```bash
 # ctf command log created 2026-01-28T19:00:00Z
 
 2026-01-28T19:00:05Z	0	/home/user	nmap -sC -sV 10.10.10.10
@@ -47,3 +48,5 @@
 2026-01-28T20:59:40Z	0	/home/user	sudo /opt/backup.sh
 
 2026-01-28T21:01:10Z	0	/root	cat /root/root.txt
+
+```
