@@ -787,24 +787,29 @@ def ingest_session(path):
     prompt = PROMPT_TEMPLATE.replace("{{SESSION}}", session_text)
 
     stop_event = threading.Event()
-    progress_started = {"value": False}
+    progress_duration = 20.0
+    progress_update_interval = 0.2
 
     def progress_bar():
-        time.sleep(0.4)
-        if stop_event.is_set():
-            return
-        progress_started["value"] = True
         print("[*] Ingesting data...")
-        for pct in range(0, 101, 10):
-            if stop_event.is_set():
-                break
+        started_at = time.monotonic()
+
+        while not stop_event.is_set():
+            elapsed = time.monotonic() - started_at
+            pct = min(100, int((elapsed / progress_duration) * 100))
             bar = "#" * (pct // 10) + "-" * (10 - (pct // 10))
             sys.stdout.write(f"\r    [{bar}] {pct}%")
             sys.stdout.flush()
-            if pct < 100:
-                time.sleep(1)
-        if progress_started["value"]:
-            print()
+
+            if pct >= 100:
+                break
+
+            time.sleep(progress_update_interval)
+
+        while not stop_event.is_set():
+            time.sleep(0.1)
+
+        print()
 
     progress_thread = threading.Thread(target=progress_bar, daemon=True)
     progress_thread.start()
