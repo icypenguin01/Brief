@@ -123,10 +123,13 @@ chmod +x requirements.sh
 ### If `requirements.sh` doesn't work:
 
 ```bash
-python3 -m pip install --upgrade pip
+python3 -m venv ~/.brief/venv
 ```
 ```bash
-python3 -m pip install openai
+~/.brief/venv/bin/python -m pip install --upgrade pip
+```
+```bash
+~/.brief/venv/bin/python -m pip install openai
 ```
 now rerun `./requirements.sh`
 
