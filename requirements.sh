@@ -36,14 +36,18 @@ fi
 
 if command -v python3 >/dev/null 2>&1; then
   echo "[*] Upgrading pip..."
-  run_with_spinner python3 -m pip install --upgrade pip >/dev/null 2>&1 || true
+  run_with_spinner python3 -m pip install --upgrade pip >/dev/null 2>&1
 
   echo "[*] Installing openai..."
-  run_with_spinner python3 -m pip install openai >/dev/null 2>&1 || true
-
-  echo "[+] Installed Python dependency: openai"
+  if run_with_spinner python3 -m pip install openai >/dev/null 2>&1; then
+    echo "[+] Installed Python dependency: openai"
+  else
+    echo "[!] Failed to install openai. Aborting."
+    exit 1
+  fi
 else
   echo "[!] python3 not found. Install Python 3 and run: python3 -m pip install openai"
+  exit 1
 fi
 
 if [ -f "brief.py" ]; then
@@ -53,4 +57,5 @@ if [ -f "brief.py" ]; then
   echo "[+] Installed brief to /usr/local/bin/brief"
 else
   echo "[!] brief.py not found in current directory"
+  exit 1
 fi
