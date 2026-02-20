@@ -305,12 +305,6 @@ firefox ~/.brief/outputs/htb-mysql-injection.analysis.html
 
 ## See the Demo of 'Brief'
 
-<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
-  <iframe 
-    src="https://www.youtube.com/embed/IDue3Il553E"
-    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
-    frameborder="0"
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-    allowfullscreen>
-  </iframe>
-</div>
+## See the Demo of 'Brief'
+
+[![Watch the demo](https://img.youtube.com/vi/IDue3Il553E/maxresdefault.jpg)](https://youtu.be/IDue3Il553E?si=pU3Kuv6_ShCeCUOa)
