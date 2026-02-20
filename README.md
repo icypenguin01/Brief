@@ -305,6 +305,4 @@ firefox ~/.brief/outputs/htb-mysql-injection.analysis.html
 
 ## See the Demo of 'Brief'
 
-## See the Demo of 'Brief'
-
-[![Watch the demo](https://img.youtube.com/vi/IDue3Il553E/maxresdefault.jpg)](https://youtu.be/IDue3Il553E?si=pU3Kuv6_ShCeCUOa)
+[![Watch the demo](https://ibb.co/V0wXkP12)](https://youtu.be/IDue3Il553E?si=pU3Kuv6_ShCeCUOa)
