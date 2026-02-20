@@ -303,6 +303,6 @@ firefox ~/.brief/outputs/htb-mysql-injection.analysis.html
 2. Regenerate a new token if needed
 3. Make sure it's set before running `brief --latest`: `echo $HF_TOKEN | head -c 10`
 
-## See the Demo of 'Brief'
+## See the Demo of `Brief`
 
-[![Watch the demo](https://ibb.co/V0wXkP12)](https://youtu.be/IDue3Il553E?si=pU3Kuv6_ShCeCUOa)
+[![Watch the demo](https://i.ibb.co/kgGDr4Mb/brief-demo.png)](https://youtu.be/IDue3Il553E?si=pU3Kuv6_ShCeCUOa)
