@@ -144,7 +144,7 @@ now rerun `./requirements.sh`
 ### 3. Set Your Token
 
 ```bash
-export HF_TOKEN= Your Hugging Face Token
+export HF_TOKEN=[Put Your Hugging Face Token Here]
 ```
 
 ##  Basic Commands
