@@ -305,10 +305,10 @@ firefox ~/.brief/outputs/htb-mysql-injection.analysis.html
 
 ## See the Demo of `Brief`
 
-[![Watch the demo](https://i.ibb.co/kgGDr4Mb/brief-demo.png)](https://www.youtube.com/watch?v=xeCwmH8kPNE)
+[![Watch the demo](https://i.ibb.co/kgGDr4Mb/brief-demo.png)](https://youtu.be/xeCwmH8kPNE?si=yB5JnskNzBsfPmQW)
 
 
 ## Story of `Brief` 
 
-[![Watch the demo](https://i.ibb.co/NzJsk9y/brief.png)](https://www.youtube.com/watch?v=kzsWUGs0OwI)
+[![Watch the demo](https://i.ibb.co/NzJsk9y/brief.png)](https://youtu.be/kzsWUGs0OwI?si=DggdmQGdsXpsgho9)
 
